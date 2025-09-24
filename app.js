@@ -64,6 +64,8 @@ async function run() {
         const eventsCollection = client.db("mcpitc").collection("events")
         const segmentsCollection = client.db("mcpitc").collection("segments")
         const blogsCollection = client.db("mcpitc").collection("blogs")
+        const executiveFormCollection = client.db("mcpitc").collection("executive-form-collection")
+        const recruitmentButton = client.db("mcpitc").collection("recruitment-btn")
 
 
         //verify admin middleware
@@ -79,7 +81,7 @@ async function run() {
         }
 
         // Connect the client to the server	(optional starting in v4.7)
-        // await client.connect();
+        await client.connect();
 
         //get all users
         app.get('/users', verifyToken, verifyAdmin, async (req, res) => {
@@ -96,31 +98,68 @@ async function run() {
         })
 
         //put email if user is not not in db
-        app.put('/user', async (req, res) => {
+        // app.put('/user', async (req, res) => {
+        //     const user = req.body;
+        //     const query = { email: user?.email }
+
+        //     if (user?.email == null) {
+        //         return;
+        //     }
+        //     if (user?.name == null) {
+        //         return
+        //     }
+
+        //     const isExisted = await usersCollection.findOne(query);
+        //     if (isExisted) {
+        //         return res.send(isExisted)
+        //     }
+
+        //     const options = { upsert: true }
+        //     const updateDoc = {
+        //         $set: {
+        //             ...user,
+        //             timestamp: Date.now()
+        //         }
+        //     }
+        //     const result = await usersCollection.updateOne(query, updateDoc, options)
+        //     res.send(result)
+        // })
+
+        app.put("/user", async (req, res) => {
             const user = req.body;
             const query = { email: user?.email }
 
-            if (user?.email == null) {
-                return;
-            }
-            if (user?.name == null) {
-                return
-            }
+            // if (user?.email == null) {
+            //     return;
+            // }
 
-            const isExisted = await usersCollection.findOne(query);
-            if (isExisted) {
-                return res.send(isExisted)
-            }
-
-            const options = { upsert: true }
-            const updateDoc = {
-                $set: {
-                    ...user,
-                    timestamp: Date.now()
+            if (user?.name != null || user?.image != null) {
+                const updateDoc = {
+                    $set: {
+                        name: user?.name,
+                        image: user?.image,
+                    }
                 }
+
+                const options = { upsert: true }
+                const result = await usersCollection.updateOne(query, updateDoc, options)
+                return res.send(result)
             }
-            const result = await usersCollection.updateOne(query, updateDoc, options)
-            res.send(result)
+            else {
+                const isExists = await usersCollection.findOne(query);
+                if (isExists) return res.send(isExists)
+
+                const updateDoc = {
+                    $set: {
+                        ...user,
+                        timestamp: Date.now(),
+                    }
+                }
+
+                const options = { upsert: true }
+                const result = await usersCollection.updateOne(query, updateDoc, options)
+                res.send(result)
+            }
         })
 
         //make admin
@@ -133,6 +172,22 @@ async function run() {
                     ...admin
                 }
             }
+            const result = await usersCollection.updateOne(query, updateDoc)
+            res.send(result)
+        })
+
+        //set designation
+        app.patch("/user/designation/:email", verifyToken, verifyAdmin, async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email };
+            const designation = req.body;
+
+            const updateDoc = {
+                $set: {
+                    ...designation
+                }
+            }
+
             const result = await usersCollection.updateOne(query, updateDoc)
             res.send(result)
         })
@@ -153,14 +208,14 @@ async function run() {
         })
 
         //post events
-        app.post('/events', async (req, res) => {
+        app.post('/events', verifyToken, verifyAdmin, async (req, res) => {
             const event = req.body;
             const result = await eventsCollection.insertOne(event);
             res.send(result)
         })
 
         //delete a event
-        app.delete('/event/:id', async (req, res) => {
+        app.delete('/event/:id', verifyToken, verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await eventsCollection.deleteOne(query);
@@ -169,7 +224,7 @@ async function run() {
 
 
         //add event segment
-        app.post('/event-segment', async (req, res) => {
+        app.post('/event-segment', verifyToken, verifyAdmin, async (req, res) => {
             const segment = req.body;
             const result = await segmentsCollection.insertOne(segment);
             res.send(result)
@@ -199,7 +254,7 @@ async function run() {
         })
 
         //update segment details
-        app.put('/segment-details/:id', async (req, res) => {
+        app.put('/segment-details/:id', verifyToken, verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const segment = req.body;
@@ -221,7 +276,7 @@ async function run() {
         })
 
         //delete one segment
-        app.delete('/segment/:id', async (req, res) => {
+        app.delete('/segment/:id', verifyToken, verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await segmentsCollection.deleteOne(query);
@@ -244,14 +299,14 @@ async function run() {
         })
 
         //add blog
-        app.post('/blogs', async (req, res) => {
+        app.post('/blogs', verifyToken, verifyAdmin, async (req, res) => {
             const blog = req.body;
             const result = await blogsCollection.insertOne(blog);
             res.send(result)
         })
 
         //edit a blog
-        app.put('/blog/:id', async (req, res) => {
+        app.put('/blog/:id', verifyToken, verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const blog = req.body;
@@ -265,10 +320,115 @@ async function run() {
         })
 
         //delete a blog
-        app.delete('/blog/:id', async (req, res) => {
+        app.delete('/blog/:id', verifyToken, verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await blogsCollection.deleteOne(query);
+            res.send(result)
+        })
+
+
+        //apply for executive
+        app.get("/executiveFormCollection", async (req, res) => {
+            const result = await executiveFormCollection.find().sort({ 'timestamp': -1 }).toArray();
+            res.send(result)
+        })
+
+
+        //get your own executive form
+        app.get("/executiveFormCollection/myForms/:email", verifyToken, async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email };
+            const myForms = await executiveFormCollection.findOne(query);
+            res.send(myForms);
+        })
+
+
+
+        //get executive with single id
+        app.get("/executiveFormCollection/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await executiveFormCollection.findOne(query);
+            res.send(result)
+        })
+
+
+        // post for executive
+        app.post("/executiveFormCollection", async (req, res) => {
+            const formBody = req.body;
+
+            const query = { email: formBody?.email }
+            const res1 = await executiveFormCollection.findOne(query);
+            if (res1) {
+                return res.status(400).send(res1)
+            }
+
+            const result = await executiveFormCollection.insertOne(formBody)
+            res.send(result)
+        })
+
+
+        // edit executive form
+        app.put("/executiveFormCollection/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+
+            const formBody = req.body;
+
+            const updateOne = {
+                $set: {
+                    ...formBody
+                }
+            }
+
+            const result = await executiveFormCollection.updateOne(query, updateOne)
+            res.send(result)
+        })
+
+
+
+
+        //delete executive form
+        app.delete("/executiveFormCollection/:email", verifyToken, verifyAdmin, async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email };
+            const result = await executiveFormCollection.deleteOne(query);
+            res.send(result);
+        })
+
+
+        //count documents
+        app.get("/admin-stats", async (req, res) => {
+            const usersCount = await usersCollection.countDocuments();
+            const eventsCount = await eventsCollection.countDocuments();
+            const recruitFormCount = await executiveFormCollection.countDocuments();
+            res.send({ usersCount, eventsCount, recruitFormCount })
+        })
+
+
+        //recruitment on off switch
+        app.get("/recruitment-onOff", verifyToken, verifyAdmin, async (req, res) => {
+            const result = await recruitmentButton.findOne({});
+            if (!result) {
+                const defaultState = { status: "off" };
+                await recruitmentButton.insertOne(defaultState);
+                return res.send(defaultState);
+            }
+
+            res.send(result);
+        })
+
+        app.put("/recruitment-onOff", verifyToken, verifyAdmin, async (req, res) => {
+            const bodyRes = req.body;
+            const options = { upsert: true }
+            const updateDoc = {
+                $set: {
+                    ...bodyRes
+                }
+            }
+
+            const result = await recruitmentButton.updateOne({}, updateDoc, options)
             res.send(result)
         })
 
