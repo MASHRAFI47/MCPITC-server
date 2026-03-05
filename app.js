@@ -81,7 +81,7 @@ async function run() {
         }
 
         // Connect the client to the server	(optional starting in v4.7)
-        // await client.connect();
+        await client.connect();
 
         //get all users
         app.get('/users', verifyToken, verifyAdmin, async (req, res) => {
@@ -408,7 +408,7 @@ async function run() {
 
 
         //recruitment on off switch
-        app.get("/recruitment-onOff", verifyToken, verifyAdmin, async (req, res) => {
+        app.get("/recruitment-onOff", verifyToken, async (req, res) => {
             const result = await recruitmentButton.findOne({});
             if (!result) {
                 const defaultState = { status: "off" };
