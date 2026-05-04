@@ -408,7 +408,7 @@ async function run() {
 
 
         //recruitment on off switch
-        app.get("/recruitment-onOff", verifyToken, async (req, res) => {
+        app.get("/recruitment-onOff", async (req, res) => {
             const result = await recruitmentButton.findOne({});
             if (!result) {
                 const defaultState = { status: "off" };
